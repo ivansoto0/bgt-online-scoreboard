@@ -1,0 +1,145 @@
+//include all scripts.
+#include"score_item.bgt" //what's used to load all scores and process them.
+#include"dateandtime.bgt" //used in logger.
+#include"logger.bgt"
+#include "sd.bgt" //Our logger for logging packets sent and received on the server.
+
+//We now asign classes for networking.
+network n;
+network_event e;
+//initialize other important things.
+file f;
+tts_voice v;
+string decryption_key="your_decryption_key";
+int port=31300;
+string ver="0.1.1";
+//Ok so now we start with the main function.
+void main()
+{
+//These few lines of code are here to load scores and other data.
+if(!directory_exists("scores")) directory_create("scores");
+string[] s=find_files("scores/*.dat");
+for(uint i=0; i<s.length(); i+=1) {
+load_score_item(string_trim_right(s[i],4));
+}
+//Setting up our server.
+n.setup_server(port, 20, 500);
+//show a window so the user can press escape and quit the server if they need to update it, etc.
+show_game_window("Scoreboard running on port "+port+" v "+ver);
+//our main loop. Here we go. This is the fun part.
+while(true)
+{
+wait(5); 
+//scoreboard loop.
+sbloop();
+//exit quickly.
+if(key_pressed(KEY_ESCAPE)) {
+for(uint i=0; i<score_items.length(); i+=1)
+{
+save_score(score_items[i].game,score_items[i]);
+}
+exit();
+}
+}
+}
+void sbloop()
+{
+//This is the scoreboard loop that handles other things like packets.
+e=n.request(); //request net data.
+if(e.type==event_receive) //Incoming packets
+{
+if(e.channel==0)
+{
+string[] parsed=string_split(get_message(), " ", false);
+if(parsed[0]=="postscore" and parsed.length()>4) //Posting our score.
+{
+string orig="none"; //A string that holds nothing if there is no description sent to the server.
+string gn=parsed[1]; //name of the game to add this to.
+string who=parsed[2]; //username for viewing scores later.
+int score=stn(parsed[3]);
+string country=parsed[4];
+//check that we have a description, if not, well we don't include one. The orig string will just stay the way it is.
+if(parsed.length()>5)
+{
+orig=string_replace(get_message(),parsed[0]+" "+parsed[1]+" "+parsed[2]+" "+parsed[3]+" "+parsed[4]+" ","",false);
+}
+//post our score and send the results.
+string r=post_score(gn,who,score,country,orig);
+send(e.peer_id,"scoreposted "+r);
+}
+//list our scores now.
+else if(parsed[0]=="listscores" and parsed.length()>1)
+{
+string country="US";
+string g=parsed[1]; //game.
+//send a list.
+send(e.peer_id,"scorelist "+list_scores(g,country));
+}
+}
+}
+if(e.type==event_disconnect)
+{
+n.disconnect_peer(e.peer_id);
+}
+}
+//These are packet functions. For the new BGT user, leave these allone unless you know what you're doing.
+string get_message()
+{
+string ret=string_decrypt(e.message, "reckey");
+return ret;
+}
+bool send(int peer, string packet)
+{
+return n.send_reliable(peer, string_encrypt(packet, "sndkey"), 0);
+}
+string randomstring()
+{
+string str="abcdefghijklmnopqrstuvwxyz1234567890!#";
+string ret;
+for(int i=1; i<=30; i++)
+{
+ret+=str[random(0, (str.length()-1))];
+}
+return ret;
+}
+//This function will post the score. The params are pretty much self-explanitory. It returns a string which is your position on the board.
+string post_score(string gamename,string user, int score,string country,string extrainfo)
+{
+score_item temp(gamename,user,score,country,extrainfo);
+score_items.insert_last(temp);
+return get_rank(gamename,score);
+}
+//This function returns back a string with scoreboard data about a game. It sends it so the client splices it and shows you the scores in a nice menu.
+string list_scores(string gamename,string country)
+{
+string f;
+score_items.sort_descending();
+for(uint i=0; i<score_items.length(); i+=1)
+{
+if(score_items[i].country==country and score_items[i].game==gamename) {
+f+=score_items[i].username+"="+score_items[i].score+"="+get_rank(gamename,score_items[i].score)+"="+score_items[i].additional_information+"\r\n";
+}
+}
+return f;
+}
+//This is me trying to figure out a way to rank the scores. Thanks X0 for his help on op overloading. Please note: The function is broken in a way which shows multiple people in a position. If user 1 is in position 10 and user 10 is also in position 10 it will return position 10 for both of them. Again, the newbie BGT user should not touch the following code, unless they know what they're doing.
+string get_rank(string g,int the_score)
+{
+int[] scores;
+for(uint i=0; i<score_items.length(); i+=1)
+{
+if(g!=score_items[i].game) continue;
+scores.insert_last(score_items[i].score);
+}
+scores.sort_descending();
+int retval=-1;
+retval=scores.find(the_score);
+retval++;
+return ""+retval;
+}
+double stn(string s) { 
+return string_to_number(s);
+}
+bool speak(string w) {
+return v.speak(w);
+}

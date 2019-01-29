@@ -1,0 +1,58 @@
+#include"hip.bgt"
+score_item@[]score_items(0);
+class score_item
+{
+string username;
+int score;
+string additional_information;
+string country;
+string game;
+string id;
+score_item(string g, string w,int s,string c,string ad="",string sid="")
+{
+game=g;
+username=w;
+score=s;
+country=c;
+if(ad=="") ad="none";
+additional_information=ad;
+if(sid=="") id=randomstring(); else id=sid;
+}
+int opCmp(score_item@ o)
+{
+if(o.score<this.score or o.score==this.score) return 1;
+if(o.score>this.score or o.score==this.score) return -1;
+else return 0;
+}
+}
+void save_score(string game,score_item@s)
+{
+string writetext;
+if(@s==null) return;
+writetext+=s.username+"[;]"+s.score+"[;]"+s.country+"[;]"+s.additional_information+"[;]"+s.id+"\r\n";
+file_put_contents("scores/"+game+".dat",writetext,250);
+}
+int get_score_index_from(string g) {
+int res=-1;
+for(uint i=0; i<score_items.length(); i+=1)
+{
+if(score_items[i].game==g) res=i;
+}
+return res;
+}
+void load_score_item(string g) {
+string un,country,extrainfo,id;
+int score;
+string sdata=file_get_contents("scores/"+g+".dat");
+if(sdata=="") return;
+string[] parsed=string_split(sdata,"[;]",false);
+if(parsed.length()>1) {
+un=parsed[1];
+score=stn(parsed[2]);
+country=parsed[3];
+extrainfo=parsed[4];
+id=parsed[5];
+score_item temp(g,un,score,country,extrainfo,id);
+score_items.insert_last(temp);
+}
+}

@@ -1,0 +1,37 @@
+void log(string name, string what)
+{
+if (!directory_exists("logs"))
+directory_create("logs");
+if(directory_exists("logs\\lic")==false) directory_create("logs\\lic");
+file f;
+f.open("logs/lic/"+name+".log","ab");
+f.write("\r\n"+what+" "+get_date()+", "+get_time());
+f.close();
+}
+string get_log(string name)
+{
+if (!directory_exists("logs"))
+directory_create("logs");
+file f;
+f.open("logs/"+name+".log","rb");
+string data=f.read();
+f.close();
+return data;
+}
+void clear_log(string name)
+{
+if (!directory_exists("logs"))
+directory_create("logs");
+file f;
+f.open("logs/"+name+".log","wb");
+f.close();
+}
+void clear_all_logs()
+{
+directory_delete("logs");
+directory_create("logs");
+}
+bool log_exists(string log)
+{
+return file_exists("logs/"+log+".log");
+}

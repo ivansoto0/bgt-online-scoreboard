@@ -1,0 +1,96 @@
+string internalgame="YourGame";
+class scoreboard
+{
+network @net;
+network_event event;
+private uint peer;
+string ip_address;
+int port;
+timer connectiontimer;
+scoreboard(string ip,int p)
+{
+ip_address=ip;
+port=p;
+network tempnet;
+@net=tempnet;
+}
+void sbloop()
+{
+event=net.request();
+if(event.type==event_receive and event.channel==0)
+{
+string[] parsed=string_split(get_message()," ",false);
+if(parsed[0]=="scoreposted" and parsed.length()>1)
+{
+int rank=string_to_number(parsed[1]);
+string message;
+if(rank<=10)
+{
+message="Congratulations! Your score made it to the top 10! Your position is "+rank;
+}
+else message="Sorry, but your score wasn't good enough to make it to the top 10. Your position is "+rank;
+}
+else if(parsed[0]=="scorelist" and parsed.length()>1)
+{
+list_scores(string_replace(get_message(),parsed[0]+" ","",false));
+}
+}
+}
+bool connect()
+{
+speak("Connecting to scoreboard server...");
+net.setup_client(20,500);
+net.connect(ip_address,port);
+connectiontimer.restart();
+while(true)
+{
+event=net.request();
+if(connectiontimer.elapsed>=10000)
+{
+return false;
+}
+if (event.type==event_connect)
+{
+//connected=true;
+return true;
+}
+}
+return false;
+}
+bool send(uint peer,string packet,int channel)
+{
+return net.send_reliable(peer,string_encrypt(packet,"reckey"),channel);
+}
+string get_message()
+{
+return string_decrypt(event.message, "sndkey");
+}
+void reset_connection()
+{
+peer=0;
+net.disconnect_peer(0);
+net.destroy();
+@net=null;
+network temp;
+@net=temp;
+}
+}
+string[] list_scores(string s) {
+string[] data=string_split(s,"\r\n",false);
+string[] retv;
+for(uint i=0; i<data.length(); i+=1)
+{
+string[] parsed=string_split(data[i],"=",false);
+string u=parsed[0];
+int score=string_to_number(parsed[1]);
+int rank=string_to_number(parsed[2]);
+string info=parsed[3];
+retv.insert_last(u+":"+score+":"+rank+":"+info);
+}
+return retv;
+}
+//these are just dumb functions I made to get this to run. You can change this later, of course.
+bool speak(string what) {
+tts_voice fr;
+return fr.speak(what);
+}
