@@ -12,7 +12,7 @@ file f;
 tts_voice v;
 string decryption_key="your_decryption_key";
 int port=31300;
-string ver="0.1.1";
+string ver="0.1.2";
 //Ok so now we start with the main function.
 void main()
 {
@@ -36,7 +36,7 @@ sbloop();
 if(key_pressed(KEY_ESCAPE)) {
 for(uint i=0; i<score_items.length(); i+=1)
 {
-save_score(score_items[i].game,score_items[i]);
+score_items[i].save_score();
 }
 exit();
 }

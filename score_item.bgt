@@ -1,4 +1,5 @@
 #include"hip.bgt"
+#include"sd.bgt"
 score_item@[]score_items(0);
 class score_item
 {
@@ -7,7 +8,10 @@ int score;
 string additional_information;
 string country;
 string game;
+savedata data("");
 string id;
+timer expirationtimer;
+int expirationtime=432000000;
 score_item(string g, string w,int s,string c,string ad="",string sid="")
 {
 game=g;
@@ -17,6 +21,20 @@ country=c;
 if(ad=="") ad="none";
 additional_information=ad;
 if(sid=="") id=randomstring(); else id=sid;
+data.fn="scores/"+this.game+"/"+this.id+".sbitem";
+data.key="scoreboard";
+if(directory_exists("scores/"+game)==false) directory_create("scores/"+game);
+}
+void save_score()
+{
+data.add("username",this.username);
+data.add("score",this.score);
+data.add("country",this.country);
+data.add("info",this.additional_information);
+data.add("id",this.id);
+data.add("expirationtime",this.expirationtime);
+data.add("elapsed",this.expirationtimer.elapsed);
+data.save();
 }
 int opCmp(score_item@ o)
 {
@@ -24,13 +42,6 @@ if(o.score<this.score or o.score==this.score) return 1;
 if(o.score>this.score or o.score==this.score) return -1;
 else return 0;
 }
-}
-void save_score(string game,score_item@s)
-{
-string writetext;
-if(@s==null) return;
-writetext+=s.username+"[;]"+s.score+"[;]"+s.country+"[;]"+s.additional_information+"[;]"+s.id+"\r\n";
-file_put_contents("scores/"+game+".dat",writetext,250);
 }
 int get_score_index_from(string g) {
 int res=-1;
@@ -41,18 +52,27 @@ if(score_items[i].game==g) res=i;
 return res;
 }
 void load_score_item(string g) {
-string un,country,extrainfo,id;
-int score;
-string sdata=file_get_contents("scores/"+g+".dat");
-if(sdata=="") return;
-string[] parsed=string_split(sdata,"[;]",false);
-if(parsed.length()>1) {
-un=parsed[1];
-score=stn(parsed[2]);
-country=parsed[3];
-extrainfo=parsed[4];
-id=parsed[5];
-score_item temp(g,un,score,country,extrainfo,id);
+savedata load(g,"scoreboard");
+load.load();
+string un=load.read("username");
+int score=load.readn("score");
+string country=load.read("country");
+string info=load.read("info");
+string id=load.read("id");
+double expirationtime=load.readn("expirationtime");
+double elapsed=load.readn("elapsed");
+score_item temp(g,un,score,country,info,id);
+temp.expirationtime=expirationtime;
+temp.expirationtimer.force(elapsed);
 score_items.insert_last(temp);
+}
+void scoreitemloop() {
+for(uint i=0;i<score_items.length();i+=1) {
+if(score_items[i].expirationtimer.elapsed>=score_items[i].expirationtime) {
+file_delete("scores/"+score_items[i].game+"/"+score_items[i].id+".sbitem");
+@score_items[i]=null;
+score_items.remove_at(i);
+continue;
+}
 }
 }

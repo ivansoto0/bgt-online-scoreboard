@@ -1,18 +1,19 @@
-string internalgame="YourGame";
 class scoreboard
 {
+string internalgame="YourGame";
 network @net;
 network_event event;
 private uint peer;
 string ip_address;
 int port;
 timer connectiontimer;
-scoreboard(string ip,int p)
+scoreboard(string ip,int p, string internalgame="")
 {
 ip_address=ip;
 port=p;
 network tempnet;
 @net=tempnet;
+if(!internalgame.is_empty()) this.internalgame=internalgame;
 }
 void sbloop()
 {
@@ -38,7 +39,6 @@ list_scores(string_replace(get_message(),parsed[0]+" ","",false));
 }
 bool connect()
 {
-speak("Connecting to scoreboard server...");
 net.setup_client(20,500);
 net.connect(ip_address,port);
 connectiontimer.restart();
